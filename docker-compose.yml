@@ -1,0 +1,44 @@
+version: "3"
+services:
+  achtsamkeit_database:
+    container_name: achtsamkeit_database
+    image: postgres:14
+    volumes:
+      - ./.docker_volumes/postgres_data:/var/lib/postgresql/data:rw
+    environment:
+      - POSTGRES_USER=achtsamkeit
+      - POSTGRES_PASSWORD=debugpassword
+      - POSTGRES_DB=achtsamkeit
+    restart: "unless-stopped"
+    networks:
+      - achtsamkeit
+    ports:
+      - "5432:5432" # just needs to be exported for debugging purposes
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U achtsamkeit" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+#  achtsamkeit_backend:
+#    container_name: achtsamkeit_backend
+#    image: achtsamkeit-backend:local
+#    environment:
+#      - ACHTSAMKEIT_LOGGING_LEVEL=trace
+#      - ACHTSAMKEIT_TOKEN_SIGNATURE_PSK=tokenpsk
+#      - ACHTSAMKEIT_DB_CONNECTION=postgres://achtsamkeit:debugpassword@achtsamkeit_database/achtsamkeit
+#    restart: "unless-stopped"
+#    depends_on:
+#      - achtsamkeit_database
+#    networks:
+#      - achtsamkeit
+#    ports:
+#      - "5479:5479" # just needs to be exported for debugging purposes
+#    healthcheck:
+#      test: [ "CMD-SHELL", "curl --user-agent docker-health-check/1.0 --fail http://127.0.0.1:5479/health" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+networks:
+  achtsamkeit:
+    driver: bridge
+
