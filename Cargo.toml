@@ -1,0 +1,60 @@
+[package]
+name = "achtsamkeit-backend"
+version = "2022.9.15"
+edition = "2021"
+authors = ["Tim Janke <tim+github@janke.biz>"]
+description = "A tool for tracking someones mindfulness"
+repository = "https://github.com/flying7eleven/achtsamkeit-backend"
+readme = "README.md"
+license-file = "LICENSE.md"
+rust-version = "1.63"
+
+[dependencies.chrono]
+version = "0.4.22"
+default-features = false
+features = ["clock", "serde"]
+
+[dependencies.log]
+version = "0.4.17"
+default-features = false
+
+[dependencies.fern]
+version = "0.6.1"
+default-features = false
+
+[dependencies.rocket]
+version = "0.5.0-rc.2"
+default-features = false
+features = ["json"]
+
+[dependencies.rocket_cors]
+git = "https://github.com/lawliet89/rocket_cors" # should be replaced with a working release version
+branch = "master"
+default-features = false
+
+[dependencies.serde]
+version = "1.0.144"
+default-features = false
+
+[dependencies.diesel]
+version = "2.0.0"
+default-features = false
+features = ["postgres", "chrono"]
+
+[dependencies.diesel_migrations]
+version = "2.0.0"
+default-features = false
+
+[build-dependencies.vergen]
+version = "7.4.2"
+default-features = false
+features = ["git", "rustc", "build", "cargo"]
+
+[dependencies.jsonwebtoken]
+version = "8.1.1"
+default-features = false
+
+[dependencies.bcrypt]
+version = "0.13.0"
+default-features = false
+features = ["std"]
