@@ -58,3 +58,7 @@ default-features = false
 version = "0.13.0"
 default-features = false
 features = ["std"]
+
+[dependencies.r2d2]
+version = "0.8.10"
+default-features = false
