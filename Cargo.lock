@@ -13,6 +13,7 @@ dependencies = [
  "fern",
  "jsonwebtoken",
  "log",
+ "r2d2",
  "rocket",
  "rocket_cors",
  "serde",

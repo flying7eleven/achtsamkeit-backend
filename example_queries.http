@@ -1,0 +1,58 @@
+###
+# @name Login the user and get an access token to the API
+# This method can be used to authenticate against the API and get an access-token
+# which is used to access the following calls.
+POST http://localhost:5645/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "debuguser",
+  "password": "debugpassword"
+}
+> {%
+client.test("Request executed successfully", function() {
+  client.assert(response.status === 200, "Response status is not 200");
+});
+
+client.test("Received a valid token response", function() {
+  var type = response.contentType.mimeType;
+  client.assert(type === "application/json", "Expected 'application/json' but received '" + type + "'");
+  client.assert(response.body.hasOwnProperty("accessToken"), "Cannot find 'access_token' option in response");
+});
+
+client.global.set("accessToken", response.body.accessToken);
+%}
+
+###
+# @name Store a mood with an attached info notice.
+POST http://localhost:5479/v1/mood
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "mood": 4,
+  "note": "Quite good mood today"
+}
+
+> {%
+client.test("Request executed successfully", function() {
+  client.assert(response.status === 204, "Response status is not 204");
+});
+%}
+
+###
+# @name Store a mood without an attached info notice.
+POST http://localhost:5479/v1/mood
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "mood": 2
+}
+
+> {%
+client.test("Request executed successfully", function() {
+  client.assert(response.status === 204, "Response status is not 204");
+});
+%}
+

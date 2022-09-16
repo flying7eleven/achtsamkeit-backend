@@ -6,6 +6,7 @@ use rocket::{error, info};
 
 mod fairings;
 mod models;
+mod routes;
 mod schema;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
@@ -70,6 +71,7 @@ fn setup_logging(logging_level: LevelFilter) {
 #[rocket::main]
 async fn main() {
     use crate::fairings::BackendConfiguration;
+    use crate::routes::auth::get_login_token;
     use log::{debug, error, info};
     use rocket::config::{Shutdown, Sig};
     use rocket::figment::{
@@ -160,7 +162,7 @@ async fn main() {
     // rocket configuration figment
     let rocket_configuration_figment = RocketConfig::figment()
         .merge(("databases", map!["saker" => achtsamkeit_database_config]))
-        .merge(("port", 5479))
+        .merge(("port", 5645))
         .merge(("address", std::net::Ipv4Addr::new(0, 0, 0, 0)))
         .merge((
             "shutdown",
@@ -205,7 +207,7 @@ async fn main() {
         .attach(cors_header)
         .manage(backend_config)
         .manage(AchtsamkeitDatabaseConnection::from(db_connection_pool))
-        .mount("/v1", routes![])
+        .mount("/v1", routes![get_login_token])
         .launch()
         .await;
 }
