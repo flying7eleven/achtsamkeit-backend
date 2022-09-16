@@ -4,6 +4,7 @@ use log::LevelFilter;
 use rocket::{error, info};
 
 mod fairings;
+mod models;
 mod schema;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations/");
