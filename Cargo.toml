@@ -39,7 +39,7 @@ default-features = false
 [dependencies.diesel]
 version = "2.0.0"
 default-features = false
-features = ["postgres", "chrono"]
+features = ["postgres", "r2d2", "chrono"]
 
 [dependencies.diesel_migrations]
 version = "2.0.0"
@@ -58,11 +58,3 @@ default-features = false
 version = "0.13.0"
 default-features = false
 features = ["std"]
-
-[dependencies.r2d2]
-version = "0.8.10"
-default-features = false
-
-[dependencies.r2d2_postgres]
-version = "0.18.1"
-default-features = false

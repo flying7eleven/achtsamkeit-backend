@@ -1,3 +1,4 @@
+use crate::fairings::AchtsamkeitDatabaseConnection;
 use diesel::PgConnection;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use log::LevelFilter;
@@ -69,7 +70,6 @@ fn setup_logging(logging_level: LevelFilter) {
 #[rocket::main]
 async fn main() {
     use crate::fairings::BackendConfiguration;
-    use diesel::Connection;
     use log::{debug, error, info};
     use rocket::config::{Shutdown, Sig};
     use rocket::figment::{
@@ -139,20 +139,16 @@ async fn main() {
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
 
-    // try to get a connection to the database server
-    let maybe_database_connection = PgConnection::establish(&database_connection_url);
-    if maybe_database_connection.is_err() {
-        error!(
-            "Could not connect to the database server with the supplied URL. The error was: {}",
-            maybe_database_connection.err().unwrap()
-        );
-        return;
-    }
-    let mut database_connection = maybe_database_connection.unwrap();
+    // create a db connection pool manager and the corresponding pool
+    let db_connection_pool_manager = diesel::r2d2::ConnectionManager::new(database_connection_url.clone());
+    let db_connection_pool = diesel::r2d2::Pool::builder().max_size(15).build(db_connection_pool_manager).unwrap();
     debug!("Successfully connected to the database server");
 
     // ensure the database is setup correctly
-    run_migrations(&mut database_connection);
+    run_migrations(&mut db_connection_pool.get().unwrap_or_else(|e| {
+        error!("Could not get a database connection from the connection pool. The error was: {}", e);
+        std::process::exit(-1);
+    }));
     info!("Database preparations finished");
 
     // configure the database pool based on the supplied connection URL
@@ -208,6 +204,7 @@ async fn main() {
     let _ = rocket::custom(rocket_configuration_figment)
         .attach(cors_header)
         .manage(backend_config)
+        .manage(AchtsamkeitDatabaseConnection::from(db_connection_pool))
         .mount("/v1", routes![])
         .launch()
         .await;
