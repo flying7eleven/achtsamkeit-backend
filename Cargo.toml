@@ -62,3 +62,7 @@ features = ["std"]
 [dependencies.r2d2]
 version = "0.8.10"
 default-features = false
+
+[dependencies.r2d2_postgres]
+version = "0.18.1"
+default-features = false
