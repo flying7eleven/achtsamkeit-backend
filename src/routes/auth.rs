@@ -1,9 +1,16 @@
 use crate::fairings::BackendConfiguration;
 use crate::AchtsamkeitDatabaseConnection;
 use rocket::http::Status;
+use rocket::request::{FromRequest, Outcome};
 use rocket::serde::json::Json;
-use rocket::{post, State};
+use rocket::{post, Request, State};
 use serde::{Deserialize, Serialize};
+
+/// The representation of an authenticated user. As soon as this is included in the parameters
+/// of a route, the call can be just made with an valid token in the header.
+pub struct AuthenticatedUser {
+    email_address: String,
+}
 
 /// The struct containing the information for requesting an authentication token.
 #[derive(Serialize, Deserialize)]
@@ -33,6 +40,97 @@ struct Claims {
 pub struct TokenResponse {
     /// The access token to use for API requests.
     access_token: String,
+}
+
+/// TODO
+#[derive(Debug)]
+pub enum AuthorizationError {
+    /// TODO
+    MissingAuthorizationHeader,
+    /// TODO
+    MalformedAuthorizationHeader,
+    /// TODO
+    InvalidToken,
+    /// TODO
+    NoDecodingKey,
+}
+
+impl<'r> FromRequest<'r> for AuthenticatedUser {
+    type Error = AuthorizationError;
+
+    fn from_request(request: &'r Request<'_>) -> Outcome<AuthenticatedUser, AuthorizationError> {
+        use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+        use log::error;
+
+        //
+        let maybe_authorization_header = request.headers().get_one("Authorization");
+        match maybe_authorization_header {
+            Some(maybe_authorization) => {
+                // split the token type from the actual token... there have to be two parts
+                let authorization_information = maybe_authorization.split(" ").collect::<Vec<&str>>();
+                if authorization_information.len() != 2 {
+                    error!(
+                        "It seems that the authorization header is malformed. There were 2 parts expected but we got {}",
+                        authorization_information.len()
+                    );
+                    return Outcome::Failure((Status::Forbidden, AuthorizationError::MalformedAuthorizationHeader));
+                }
+
+                // ensure that the token type is marked as 'bearer' token
+                if authorization_information[0].to_lowercase() != "bearer" {
+                    error!(
+                        "It seems that the authorization header is malformed. We expected as token type 'bearer' but got '{}'",
+                        authorization_information[0].to_lowercase()
+                    );
+                    return Outcome::Failure((Status::Forbidden, AuthorizationError::MalformedAuthorizationHeader));
+                }
+
+                // specify the parameter for the validation of the token
+                let mut validation_parameter = Validation::new(Algorithm::RS512);
+                validation_parameter.leeway = 5; // allow a time difference of max. 5 seconds
+                validation_parameter.validate_exp = true;
+                validation_parameter.validate_nbf = true;
+
+                // get the current backend configuration (for the public key)
+                let backend_configuration = match request.guard::<&'r State<BackendConfiguration>>() {
+                    Outcome::Success(state) => state,
+                    Outcome::Failure(_) => {
+                        error!("Could not get the current configuration for extracting the toking signing key");
+                        return Outcome::Failure((Status::Forbidden, AuthorizationError::NoDecodingKey));
+                    }
+                    Outcome::Forward(forward) => return Outcome::Forward(forward),
+                };
+
+                // get the 'validation' key for the token
+                let decoding_key = match DecodingKey::from_rsa_pem(backend_configuration.public_key.as_bytes()) {
+                    Ok(key) => key,
+                    Err(error) => {
+                        error!("Could not get the public key for the token validation. The error was: {}", error);
+                        return Outcome::Failure((Status::Forbidden, AuthorizationError::NoDecodingKey));
+                    }
+                };
+
+                // verify the validity of the token supplied in the header
+                let decoded_token = match decode::<Claims>(authorization_information[1], &decoding_key, &validation_parameter) {
+                    Ok(token) => token,
+                    Err(error) => {
+                        error!("The supplied token seems to be invalid. The error was: {}", error);
+                        return Outcome::Failure((Status::Forbidden, AuthorizationError::InvalidToken));
+                    }
+                };
+
+                // if we reach this step, the validation was successful, and we can allow the user to
+                // call the route
+                return Outcome::Success(AuthenticatedUser {
+                    email_address: decoded_token.claims.sub,
+                });
+            }
+            _ => {
+                error!("No authorization header could be found for an authenticated route!");
+                Outcome::Failure((Status::Forbidden, AuthorizationError::MissingAuthorizationHeader))
+            }
+        }
+    }
 }
 
 fn get_token_for_user(subject: &String, signature_psk: &String, lifetime: usize) -> Option<String> {
