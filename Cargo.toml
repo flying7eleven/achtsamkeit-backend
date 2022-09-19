@@ -1,6 +1,6 @@
 [package]
 name = "achtsamkeit-backend"
-version = "2022.9.15"
+version = "2022.9.19"
 edition = "2021"
 authors = ["Tim Janke <tim+github@janke.biz>"]
 description = "A tool for tracking someones mindfulness"
