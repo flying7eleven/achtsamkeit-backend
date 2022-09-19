@@ -42,23 +42,24 @@ pub struct TokenResponse {
     access_token: String,
 }
 
-/// TODO
+/// The error types which can occur during request authentication.
 #[derive(Debug)]
 pub enum AuthorizationError {
-    /// TODO
+    /// No authorization header was found although it is required.
     MissingAuthorizationHeader,
-    /// TODO
+    /// The authorization header seems to be malformed and cannot be interpreted.
     MalformedAuthorizationHeader,
-    /// TODO
+    /// The supplied authentication token is not valid.
     InvalidToken,
-    /// TODO
+    /// The backend has no secret key which can validate the access token.
     NoDecodingKey,
 }
 
+#[rocket::async_trait]
 impl<'r> FromRequest<'r> for AuthenticatedUser {
     type Error = AuthorizationError;
 
-    fn from_request(request: &'r Request<'_>) -> Outcome<AuthenticatedUser, AuthorizationError> {
+    async fn from_request(request: &'r Request<'_>) -> Outcome<AuthenticatedUser, AuthorizationError> {
         use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
         use log::error;
 
@@ -86,13 +87,13 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
                 }
 
                 // specify the parameter for the validation of the token
-                let mut validation_parameter = Validation::new(Algorithm::RS512);
+                let mut validation_parameter = Validation::new(Algorithm::HS512);
                 validation_parameter.leeway = 5; // allow a time difference of max. 5 seconds
                 validation_parameter.validate_exp = true;
                 validation_parameter.validate_nbf = true;
 
                 // get the current backend configuration (for the public key)
-                let backend_configuration = match request.guard::<&'r State<BackendConfiguration>>() {
+                let backend_configuration = match request.guard::<&'r State<BackendConfiguration>>().await {
                     Outcome::Success(state) => state,
                     Outcome::Failure(_) => {
                         error!("Could not get the current configuration for extracting the toking signing key");
@@ -102,13 +103,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
                 };
 
                 // get the 'validation' key for the token
-                let decoding_key = match DecodingKey::from_rsa_pem(backend_configuration.public_key.as_bytes()) {
-                    Ok(key) => key,
-                    Err(error) => {
-                        error!("Could not get the public key for the token validation. The error was: {}", error);
-                        return Outcome::Failure((Status::Forbidden, AuthorizationError::NoDecodingKey));
-                    }
-                };
+                let decoding_key = DecodingKey::from_secret(backend_configuration.token_signature_psk.as_bytes());
 
                 // verify the validity of the token supplied in the header
                 let decoded_token = match decode::<Claims>(authorization_information[1], &decoding_key, &validation_parameter) {

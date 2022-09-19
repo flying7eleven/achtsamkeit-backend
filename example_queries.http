@@ -25,7 +25,7 @@ client.global.set("accessToken", response.body.accessToken);
 
 ###
 # @name Store a mood with an attached info notice.
-POST http://localhost:5479/v1/mood
+POST http://localhost:5645/v1/mood
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
@@ -42,7 +42,7 @@ client.test("Request executed successfully", function() {
 
 ###
 # @name Store a mood without an attached info notice.
-POST http://localhost:5479/v1/mood
+POST http://localhost:5645/v1/mood
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
