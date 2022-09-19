@@ -181,7 +181,13 @@ pub async fn get_login_token(
     use log::error;
 
     // get a database connection from the connection pool
-    let mut db_transaction_builder = db_connection_pool.get().unwrap();
+    let mut db_transaction_builder = match db_connection_pool.get() {
+        Ok(connection) => connection,
+        Err(error) => {
+            error!("Could not get a connection from the database connection pool. The error was: {}", error);
+            return Err(Status::InternalServerError);
+        }
+    };
 
     // try to get the user record for the supplied username
     let supplied_username = login_information.username.clone();
