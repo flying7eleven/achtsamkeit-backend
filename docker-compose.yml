@@ -32,7 +32,7 @@ services:
 #    networks:
 #      - achtsamkeit
 #    ports:
-#      - "5479:5479" # just needs to be exported for debugging purposes
+#      - "5645:5645" # just needs to be exported for debugging purposes
 #    healthcheck:
 #      test: [ "CMD-SHELL", "curl --user-agent docker-health-check/1.0 --fail http://127.0.0.1:5479/health" ]
 #      interval: 10s
