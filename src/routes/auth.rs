@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 /// The representation of an authenticated user. As soon as this is included in the parameters
 /// of a route, the call can be just made with an valid token in the header.
 pub struct AuthenticatedUser {
-    email_address: String,
+    pub email_address: String,
 }
 
 /// The struct containing the information for requesting an authentication token.
