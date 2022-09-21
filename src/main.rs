@@ -144,7 +144,7 @@ async fn main() {
 
     // create a db connection pool manager and the corresponding pool
     let db_connection_pool_manager = diesel::r2d2::ConnectionManager::new(database_connection_url.clone());
-    let db_connection_pool = diesel::r2d2::Pool::builder().max_size(15).build(db_connection_pool_manager).unwrap();
+    let db_connection_pool = r2d2::Pool::builder().max_size(15).build(db_connection_pool_manager).unwrap();
     debug!("Successfully connected to the database server");
 
     // ensure the database is setup correctly

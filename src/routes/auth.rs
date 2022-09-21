@@ -68,7 +68,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
         match maybe_authorization_header {
             Some(maybe_authorization) => {
                 // split the token type from the actual token... there have to be two parts
-                let authorization_information = maybe_authorization.split(" ").collect::<Vec<&str>>();
+                let authorization_information = maybe_authorization.split(' ').collect::<Vec<&str>>();
                 if authorization_information.len() != 2 {
                     error!(
                         "It seems that the authorization header is malformed. There were 2 parts expected but we got {}",
@@ -128,7 +128,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
     }
 }
 
-fn get_token_for_user(subject: &String, signature_psk: &String, lifetime: usize) -> Option<String> {
+fn get_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use log::error;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -150,7 +150,7 @@ fn get_token_for_user(subject: &String, signature_psk: &String, lifetime: usize)
         exp: token_expires_at,
         iat: token_issued_at,
         nbf: token_issued_at + 1,
-        sub: subject.clone(),
+        sub: subject.to_string(),
     };
 
     // get the signing key for the token
@@ -191,10 +191,8 @@ pub async fn get_login_token(
 
     // try to get the user record for the supplied username
     let supplied_username = login_information.username.clone();
-    let maybe_user_result = db_transaction_builder
-        .build_transaction()
-        .read_only()
-        .run::<User, diesel::result::Error, _>(move |connection| match users.filter(username.eq(supplied_username)).load::<User>(connection) {
+    let maybe_user_result = db_transaction_builder.build_transaction().read_only().run::<User, Error, _>(move |connection| {
+        match users.filter(username.eq(supplied_username)).load::<User>(connection) {
             Ok(found_users) => {
                 if found_users.len() != 1 {
                     return Err(Error::NotFound);
@@ -202,7 +200,8 @@ pub async fn get_login_token(
                 Ok(found_users[0].clone())
             }
             Err(error) => Err(error),
-        });
+        }
+    });
 
     // try to get the actual user object or delay a bit and then return with the corresponding error
     let user = match maybe_user_result {
