@@ -71,7 +71,7 @@ fn setup_logging(logging_level: LevelFilter) {
 #[rocket::main]
 async fn main() {
     use crate::fairings::BackendConfiguration;
-    use crate::routes::auth::get_login_token;
+    use crate::routes::auth::{get_access_token_from_refresh_token, get_login_token};
     use crate::routes::mood::store_mood;
     use log::{debug, error, info};
     use rocket::config::{Shutdown, Sig};
@@ -215,7 +215,7 @@ async fn main() {
         .attach(cors_header)
         .manage(backend_config)
         .manage(AchtsamkeitDatabaseConnection::from(db_connection_pool))
-        .mount("/v1", routes![get_login_token, store_mood])
+        .mount("/v1", routes![get_login_token, get_access_token_from_refresh_token, store_mood])
         .launch()
         .await;
 }

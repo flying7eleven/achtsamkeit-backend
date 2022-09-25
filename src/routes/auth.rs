@@ -21,6 +21,13 @@ pub struct LoginInformation {
     password: String,
 }
 
+/// The struct containing the information for requesting a new access token from a refresh token.
+#[derive(Serialize, Deserialize)]
+pub struct RefreshInformation {
+    /// The refresh token to use to retrieve a new token pair.
+    refresh_token: String,
+}
+
 /// The struct which describes the token claims for the JWT to generate.
 #[derive(Serialize, Deserialize)]
 struct Claims {
@@ -294,6 +301,52 @@ pub async fn get_login_token(
             &config.token_signature_psk,
             config.refresh_token_lifetime_in_seconds,
         ) {
+            return Ok(Json(TokenResponse { access_token, refresh_token }));
+        }
+    }
+
+    // it seems that we failed to generate a valid token, this should never happen, something
+    // seems to be REALLY wrong
+    Err(Status::InternalServerError)
+}
+
+#[post("/auth/refresh", data = "<refresh_information>")]
+pub async fn get_access_token_from_refresh_token(
+    refresh_information: Json<RefreshInformation>,
+    config: &State<BackendConfiguration>,
+) -> Result<Json<TokenResponse>, Status> {
+    use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
+
+    // specify the parameter for the validation of the token
+    let mut validation_parameter = Validation::new(Algorithm::HS512);
+    validation_parameter.leeway = 5; // allow a time difference of max. 5 seconds
+    validation_parameter.validate_exp = true;
+    validation_parameter.validate_nbf = true;
+
+    // get the 'validation' key for the token
+    let decoding_key = DecodingKey::from_secret(config.token_signature_psk.as_bytes());
+
+    // verify the validity of the token supplied in the header
+    let decoded_token = match decode::<Claims>(refresh_information.refresh_token.as_str(), &decoding_key, &validation_parameter) {
+        Ok(token) => token,
+        Err(error) => {
+            error!("The supplied token seems to be invalid. The error was: {}", error);
+            return Err(Status::Forbidden);
+        }
+    };
+
+    // ensure that we'll just accept refresh tokens and nothing else
+    if decoded_token.claims.token_type != "refresh" {
+        error!("The caller tried to use an other token than an refresh token to retrieve a new access token");
+        return Err(Status::Forbidden);
+    }
+
+    // if we get to this spot, we can generate a new access and refresh token and return it to the
+    // calling party
+    if let Some(access_token) = get_access_token_for_user(&decoded_token.claims.sub, &config.token_signature_psk, config.access_token_lifetime_in_seconds) {
+        if let Some(refresh_token) =
+            get_refresh_token_for_user(&decoded_token.claims.sub, &config.token_signature_psk, config.refresh_token_lifetime_in_seconds)
+        {
             return Ok(Json(TokenResponse { access_token, refresh_token }));
         }
     }

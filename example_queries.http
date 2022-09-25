@@ -31,6 +31,46 @@ client.global.set("refreshToken", response.body.refreshToken);
 %}
 
 ###
+# @name Query a new access token by using the refresh token.
+POST http://localhost:5645/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{refreshToken}}"
+}
+> {%
+client.test("Request executed successfully", function() {
+  client.assert(response.status === 200, "Response status is not 200");
+});
+
+client.test("Received a valid access token response", function() {
+  var type = response.contentType.mimeType;
+  client.assert(type === "application/json", "Expected 'application/json' but received '" + type + "'");
+  client.assert(response.body.hasOwnProperty("accessToken"), "Cannot find 'accessToken' option in response");
+});
+
+client.test("Received a valid refresh token response", function() {
+  var type = response.contentType.mimeType;
+  client.assert(type === "application/json", "Expected 'application/json' but received '" + type + "'");
+  client.assert(response.body.hasOwnProperty("refreshToken"), "Cannot find 'refreshToken' option in response");
+});
+%}
+
+###
+# @name Ensure the access token cannot be used to query a new access/refresh token pair.
+POST http://localhost:5645/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{accessToken}}"
+}
+> {%
+client.test("Request executed successfully", function() {
+  client.assert(response.status === 403, "Response status is not 403");
+});
+%}
+
+###
 # @name Store a mood with an refresh token will not work.
 POST http://localhost:5645/v1/mood
 Authorization: Bearer {{refreshToken}}
