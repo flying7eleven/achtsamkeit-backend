@@ -138,8 +138,24 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
     }
 }
 
-fn get_refresh_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
+fn get_signed_token(claims: &Claims, signature_psk: &str) -> Option<String> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+
+    // get the signing key for the token
+    let encoding_key = EncodingKey::from_secret(signature_psk.as_ref());
+
+    // generate a new JWT for the supplied header and token claims. if we were successful, return
+    // the token
+    let header = Header::new(Algorithm::HS512);
+    if let Ok(token) = encode(&header, claims, &encoding_key) {
+        return Some(token);
+    }
+
+    // if we fail, return None
+    None
+}
+
+fn get_refresh_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
     use log::error;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -164,22 +180,11 @@ fn get_refresh_token_for_user(subject: &str, signature_psk: &str, lifetime: usiz
         token_type: "refresh".to_string(),
     };
 
-    // get the signing key for the token
-    let encoding_key = EncodingKey::from_secret(signature_psk.as_ref());
-
-    // generate a new JWT for the supplied header and token claims. if we were successful, return
-    // the token
-    let header = Header::new(Algorithm::HS512);
-    if let Ok(token) = encode(&header, &token_claims, &encoding_key) {
-        return Some(token);
-    }
-
-    // if we fail, return None
-    None
+    // sign the token and return it
+    get_signed_token(&token_claims, signature_psk)
 }
 
 fn get_access_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
-    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use log::error;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -204,18 +209,8 @@ fn get_access_token_for_user(subject: &str, signature_psk: &str, lifetime: usize
         token_type: "access".to_string(),
     };
 
-    // get the signing key for the token
-    let encoding_key = EncodingKey::from_secret(signature_psk.as_ref());
-
-    // generate a new JWT for the supplied header and token claims. if we were successful, return
-    // the token
-    let header = Header::new(Algorithm::HS512);
-    if let Ok(token) = encode(&header, &token_claims, &encoding_key) {
-        return Some(token);
-    }
-
-    // if we fail, return None
-    None
+    // sign the token and return it
+    get_signed_token(&token_claims, signature_psk)
 }
 
 #[post("/auth/login", data = "<login_information>")]
