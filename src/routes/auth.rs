@@ -32,6 +32,8 @@ struct Claims {
     nbf: usize,
     /// The subject for whom the token was issued.
     sub: String,
+    /// The type of the token (access or refresh).
+    token_type: String,
 }
 
 /// The response object which is used when the user requested a token.
@@ -40,6 +42,8 @@ struct Claims {
 pub struct TokenResponse {
     /// The access token to use for API requests.
     access_token: String,
+    /// The refresh token to use for requesting a new access token.
+    refresh_token: String,
 }
 
 /// The error types which can occur during request authentication.
@@ -128,7 +132,7 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
     }
 }
 
-fn get_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
+fn get_refresh_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
     use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
     use log::error;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -151,6 +155,47 @@ fn get_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Op
         iat: token_issued_at,
         nbf: token_issued_at + 1,
         sub: subject.to_string(),
+        token_type: "refresh".to_string(),
+    };
+
+    // get the signing key for the token
+    let encoding_key = EncodingKey::from_secret(signature_psk.as_ref());
+
+    // generate a new JWT for the supplied header and token claims. if we were successful, return
+    // the token
+    let header = Header::new(Algorithm::HS512);
+    if let Ok(token) = encode(&header, &token_claims, &encoding_key) {
+        return Some(token);
+    }
+
+    // if we fail, return None
+    None
+}
+
+fn get_access_token_for_user(subject: &str, signature_psk: &str, lifetime: usize) -> Option<String> {
+    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use log::error;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    // get the issuing time for the token
+    let token_issued_at = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(duration) => duration.as_secs() as usize,
+        Err(error) => {
+            error!("Could not get the issuing time for the token. The error was: {}", error);
+            return None;
+        }
+    };
+
+    // calculate the time when the token expires
+    let token_expires_at = token_issued_at + 1 + lifetime;
+
+    // define the content of the actual token
+    let token_claims = Claims {
+        exp: token_expires_at,
+        iat: token_issued_at,
+        nbf: token_issued_at + 1,
+        sub: subject.to_string(),
+        token_type: "access".to_string(),
     };
 
     // get the signing key for the token
@@ -238,8 +283,18 @@ pub async fn get_login_token(
 
     // if we get here, the we ensured that the user is known and that the supplied password
     // was valid, we can generate a new access token and return it to the calling party
-    if let Some(token) = get_token_for_user(&login_information.username, &config.token_signature_psk, config.access_token_lifetime_in_seconds) {
-        return Ok(Json(TokenResponse { access_token: token }));
+    if let Some(access_token) = get_access_token_for_user(
+        &login_information.username,
+        &config.token_signature_psk,
+        config.access_token_lifetime_in_seconds,
+    ) {
+        if let Some(refresh_token) = get_refresh_token_for_user(
+            &login_information.username,
+            &config.token_signature_psk,
+            config.refresh_token_lifetime_in_seconds,
+        ) {
+            return Ok(Json(TokenResponse { access_token, refresh_token }));
+        }
     }
 
     // it seems that we failed to generate a valid token, this should never happen, something
