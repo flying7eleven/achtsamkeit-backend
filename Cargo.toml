@@ -33,7 +33,7 @@ branch = "master"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.144"
+version = "1.0.145"
 default-features = false
 
 [dependencies.diesel]
