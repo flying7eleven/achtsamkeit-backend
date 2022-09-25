@@ -14,13 +14,37 @@ client.test("Request executed successfully", function() {
   client.assert(response.status === 200, "Response status is not 200");
 });
 
-client.test("Received a valid token response", function() {
+client.test("Received a valid access token response", function() {
   var type = response.contentType.mimeType;
   client.assert(type === "application/json", "Expected 'application/json' but received '" + type + "'");
-  client.assert(response.body.hasOwnProperty("accessToken"), "Cannot find 'access_token' option in response");
+  client.assert(response.body.hasOwnProperty("accessToken"), "Cannot find 'accessToken' option in response");
+});
+
+client.test("Received a valid refresh token response", function() {
+  var type = response.contentType.mimeType;
+  client.assert(type === "application/json", "Expected 'application/json' but received '" + type + "'");
+  client.assert(response.body.hasOwnProperty("refreshToken"), "Cannot find 'refreshToken' option in response");
 });
 
 client.global.set("accessToken", response.body.accessToken);
+client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+###
+# @name Store a mood with an refresh token will not work.
+POST http://localhost:5645/v1/mood
+Authorization: Bearer {{refreshToken}}
+Content-Type: application/json
+
+{
+  "mood": 4,
+  "note": "Quite good mood today"
+}
+
+> {%
+client.test("Request executed successfully", function() {
+  client.assert(response.status === 403, "Response status is not 403");
+});
 %}
 
 ###
