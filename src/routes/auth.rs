@@ -3,7 +3,7 @@ use crate::AchtsamkeitDatabaseConnection;
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::serde::json::Json;
-use rocket::{post, Request, State};
+use rocket::{error, post, Request, State};
 use serde::{Deserialize, Serialize};
 
 /// The representation of an authenticated user. As soon as this is included in the parameters
@@ -117,6 +117,12 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
                         return Outcome::Failure((Status::Forbidden, AuthorizationError::InvalidToken));
                     }
                 };
+
+                // ensure that we'll just accept access tokens and nothing else
+                if decoded_token.claims.token_type != "access" {
+                    error!("The caller tried to use an other token than an access token");
+                    return Outcome::Failure((Status::Forbidden, AuthorizationError::InvalidToken));
+                }
 
                 // if we reach this step, the validation was successful, and we can allow the user to
                 // call the route
