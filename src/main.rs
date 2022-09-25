@@ -122,16 +122,23 @@ async fn main() {
         return;
     }
 
-    // get the token life time in seconds
-    let token_lifetime_in_seconds = env::var("ACHTSAMKEIT_TOKEN_LIFETIME_IN_SECONDS")
-        .unwrap_or_else(|_| "300".to_string())
+    // get the access token life time in seconds
+    let access_token_lifetime_in_seconds = env::var("ACHTSAMKEIT_ACCESS_TOKEN_LIFETIME_IN_SECONDS")
+        .unwrap_or_else(|_| "60".to_string())
         .parse::<usize>()
         .unwrap_or(300);
+
+    // get the refresh token life time in seconds
+    let refresh_token_lifetime_in_seconds = env::var("ACHTSAMKEIT_REFRESH_TOKEN_LIFETIME_IN_SECONDS")
+        .unwrap_or_else(|_| "3600".to_string())
+        .parse::<usize>()
+        .unwrap_or(3600);
 
     // create a struct which holds the whole configuration
     let backend_config = BackendConfiguration {
         token_signature_psk: token_signature_psk.to_string(),
-        token_lifetime_in_seconds,
+        access_token_lifetime_in_seconds,
+        refresh_token_lifetime_in_seconds,
     };
 
     // just wait for 10 seconds until we continue. This is just an ugly fix that we have to wait until the database server

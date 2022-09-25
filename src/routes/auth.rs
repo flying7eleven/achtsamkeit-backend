@@ -238,7 +238,7 @@ pub async fn get_login_token(
 
     // if we get here, the we ensured that the user is known and that the supplied password
     // was valid, we can generate a new access token and return it to the calling party
-    if let Some(token) = get_token_for_user(&login_information.username, &config.token_signature_psk, config.token_lifetime_in_seconds) {
+    if let Some(token) = get_token_for_user(&login_information.username, &config.token_signature_psk, config.access_token_lifetime_in_seconds) {
         return Ok(Json(TokenResponse { access_token: token }));
     }
 
