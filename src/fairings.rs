@@ -1,5 +1,7 @@
 use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
 use diesel::PgConnection;
+use rocket::fairing::{Fairing, Info, Kind};
+use rocket::{Request, Response};
 
 /// TODO
 pub struct AchtsamkeitDatabaseConnection(Pool<ConnectionManager<PgConnection>>);
@@ -30,4 +32,25 @@ pub struct BackendConfiguration {
     pub access_token_lifetime_in_seconds: usize,
     /// The refresh token-lifetime in seconds.
     pub refresh_token_lifetime_in_seconds: usize,
+}
+
+/// The fairing which can be used for setting a cache-control
+/// header which instructs the calling party to not cache the
+/// API result.
+pub struct NoCacheFairing;
+
+#[rocket::async_trait]
+impl Fairing for NoCacheFairing {
+    /// Get some generic information about this fairing.
+    fn info(&self) -> Info {
+        Info {
+            name: "Ensure the client is instructed to not cache the result.",
+            kind: Kind::Response,
+        }
+    }
+
+    /// Ensure that each response has the corresponding header set.
+    async fn on_response<'r>(&self, _: &'r Request<'_>, response: &mut Response<'r>) {
+        response.set_raw_header("Cache-Control", "no-cache");
+    }
 }

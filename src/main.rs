@@ -1,4 +1,4 @@
-use crate::fairings::AchtsamkeitDatabaseConnection;
+use crate::fairings::{AchtsamkeitDatabaseConnection, NoCacheFairing};
 use diesel::PgConnection;
 use diesel_migrations::{embed_migrations, EmbeddedMigrations};
 use log::LevelFilter;
@@ -203,6 +203,10 @@ async fn main() {
     .to_cors()
     .unwrap();
 
+    // create a fairing which is setting a cache control header to not cache
+    // the API responses
+    let no_cache_header = NoCacheFairing {};
+
     // after everything is set up, we should unset ann environment variables to prevent leaking
     // sensitive information
     unset_environment_variable("ACHTSAMKEIT_LOGGING_LEVEL");
@@ -213,6 +217,7 @@ async fn main() {
     info!("Server started and the routes are ready to process queries");
     let _ = rocket::custom(rocket_configuration_figment)
         .attach(cors_header)
+        .attach(no_cache_header)
         .manage(backend_config)
         .manage(AchtsamkeitDatabaseConnection::from(db_connection_pool))
         .mount("/v1", routes![get_login_token, get_access_token_from_refresh_token, store_mood])
