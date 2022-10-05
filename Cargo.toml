@@ -7,7 +7,7 @@ description = "A tool for tracking someones mindfulness"
 repository = "https://github.com/flying7eleven/achtsamkeit-backend"
 readme = "README.md"
 license-file = "LICENSE.md"
-rust-version = "1.63"
+rust-version = "1.64"
 
 [dependencies.chrono]
 version = "0.4.22"
